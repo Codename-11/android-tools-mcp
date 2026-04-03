@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# stdio-to-SSE bridge for Android Studio MCP server.
+# Usage: ./scripts/android-studio-mcp [--port PORT]
+# Make executable: chmod +x scripts/android-studio-mcp
+
+set -euo pipefail
+
+PORT=24601
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --port) PORT="$2"; shift 2 ;;
+    *) echo "Unknown flag: $1" >&2; exit 1 ;;
+  esac
+done
+
+BASE="http://127.0.0.1:${PORT}"
+cleanup() { kill "$SSE_PID" 2>/dev/null || true; }
+trap cleanup EXIT INT TERM
+
+# Connect to SSE stream and forward events to stdout
+curl -sN "${BASE}/sse" | while IFS= read -r line; do
+  # SSE data lines start with "data: "
+  if [[ "$line" == data:* ]]; then
+    echo "${line#data: }"
+  fi
+done &
+SSE_PID=$!
+
+# Read JSON-RPC requests from stdin and POST to the message endpoint
+while IFS= read -r request; do
+  [[ -z "$request" ]] && continue
+  curl -s -X POST "${BASE}/message" \
+    -H "Content-Type: application/json" \
+    -d "$request" >/dev/null
+done
+
+wait "$SSE_PID" 2>/dev/null || true

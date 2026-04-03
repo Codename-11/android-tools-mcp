@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Quick health check for the Android Tools MCP server
+PORT="${1:-24601}"
+echo "Checking MCP server on port $PORT..."
+if curl -s --max-time 3 "http://localhost:$PORT/sse" -o /dev/null -w "%{http_code}" 2>/dev/null | grep -q "200"; then
+  echo "MCP server is running on port $PORT"
+  exit 0
+else
+  echo "MCP server is NOT reachable on port $PORT"
+  echo "Make sure Android Studio is running with a project open."
+  exit 1
+fi
