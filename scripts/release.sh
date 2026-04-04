@@ -29,6 +29,10 @@ if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   exit 1
 fi
 
+if ! command -v jenv &>/dev/null; then
+  echo "Warning: jenv not found. Make sure JAVA_HOME points to JDK 17." >&2
+fi
+
 if ! command -v gh &>/dev/null; then
   echo "Error: gh CLI is not installed. Install from https://cli.github.com" >&2
   exit 1
@@ -59,7 +63,11 @@ sed -i "" "s/^plugin\.version = .*/plugin.version = $VERSION/" gradle.properties
 # ---- Build ------------------------------------------------------------------
 
 echo "Building plugin..."
-./gradlew buildPlugin --quiet
+if command -v jenv &>/dev/null; then
+  jenv exec ./gradlew buildPlugin --quiet
+else
+  ./gradlew buildPlugin --quiet
+fi
 
 ZIP=$(find build/distributions -name "*.zip" | head -1)
 if [[ -z "$ZIP" ]]; then
@@ -71,7 +79,11 @@ fi
 
 echo "Committing version bump..."
 git add gradle.properties
-git commit -m "chore: release $TAG"
+if git diff --cached --quiet; then
+  echo "Version already at $VERSION, skipping commit."
+else
+  git commit -m "chore: release $TAG"
+fi
 
 echo "Tagging $TAG..."
 git tag "$TAG"
