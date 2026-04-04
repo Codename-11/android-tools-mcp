@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>dev.amsavarthan.android-tools-mcp</id>
     <name>Android Tools MCP Bridge</name>
-    <vendor>anthropic</vendor>
+    <vendor>Amsavarthan</vendor>
     <description>Exposes Android Studio's built-in Gemini agent tools as an MCP server for external AI coding tools</description>
 
     <idea-version since-build="253" until-build="253.*"/>

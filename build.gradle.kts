@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("org.jetbrains.kotlin.jvm") version "2.1.0"
     id("org.jetbrains.intellij.platform") version "2.5.0"
@@ -10,9 +12,18 @@ repositories {
     }
 }
 
+val localProps = Properties().apply {
+    val f = file("local.properties")
+    if (f.exists()) load(f.inputStream())
+}
+val androidStudioPath: String =
+    localProps.getProperty("android.studio.path")
+        ?: System.getenv("ANDROID_STUDIO_PATH")
+        ?: "/Applications/Android Studio.app"
+
 dependencies {
     intellijPlatform {
-        local("/Users/amsavart-18213/Applications/Android Studio.app")
+        local(androidStudioPath)
         bundledPlugin("com.google.tools.ij.aiplugin")
     }
 }

@@ -14,24 +14,54 @@ while [[ $# -gt 0 ]]; do
 done
 
 BASE="http://127.0.0.1:${PORT}"
-cleanup() { kill "$SSE_PID" 2>/dev/null || true; }
+SESSION_FILE=$(mktemp)
+
+cleanup() { 
+  # Kill all child processes (including curl and the while loop)
+  pkill -P $$ 2>/dev/null || true
+  rm -f "$SESSION_FILE"
+}
 trap cleanup EXIT INT TERM
 
 # Connect to SSE stream and forward events to stdout
+# Also extract the session endpoint for POST requests
 curl -sN "${BASE}/sse" | while IFS= read -r line; do
+  # Remove trailing carriage return (SSE lines end with \r\n)
+  line="${line%$'\r'}"
+  
   # SSE data lines start with "data: "
   if [[ "$line" == data:* ]]; then
-    echo "${line#data: }"
+    data_content="${line#data: }"
+    # Check if this is the endpoint URL
+    if [[ "$data_content" == /message\?sessionId=* ]]; then
+      echo "$data_content" > "$SESSION_FILE"
+    else
+      # Forward the actual JSON-RPC data to stdout
+      echo "$data_content"
+    fi
   fi
 done &
-SSE_PID=$!
+
+# Wait briefly for the session ID to be populated
+for i in {1..50}; do
+  if [ -s "$SESSION_FILE" ]; then
+    break
+  fi
+  sleep 0.1
+done
+
+ENDPOINT=$(cat "$SESSION_FILE" 2>/dev/null || echo "/message")
+ENDPOINT="${ENDPOINT%$'\r'}"
 
 # Read JSON-RPC requests from stdin and POST to the message endpoint
 while IFS= read -r request; do
   [[ -z "$request" ]] && continue
-  curl -s -X POST "${BASE}/message" \
+  
+  # POST the request to the endpoint. The result is returned via the SSE stream,
+  # so we discard the HTTP response body here.
+  curl -s -X POST "${BASE}${ENDPOINT}" \
     -H "Content-Type: application/json" \
     -d "$request" >/dev/null
 done
 
-wait "$SSE_PID" 2>/dev/null || true
+# When stdin closes, cleanup will be automatically triggered by EXIT trap
