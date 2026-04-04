@@ -18,7 +18,7 @@ Download the ZIP from [Releases](https://github.com/amsavarthan/android-tools-mc
 
 **2. Download the bridge script**
 
-Save [`android-studio-mcp.py`](https://raw.githubusercontent.com/amsavarthan/android-tools-mcp/main/scripts/android-studio-mcp.py) somewhere on your machine.
+Save [`android-studio-mcp.py`](https://github.com/amsavarthan/android-tools-mcp/blob/main/scripts/android-studio-mcp.py) somewhere on your machine.
 
 **3. Connect to your favourite tool** (see [below](#connect-to-your-favourite-tool))
 
