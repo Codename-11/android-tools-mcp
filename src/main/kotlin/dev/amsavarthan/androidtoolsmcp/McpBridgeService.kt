@@ -10,7 +10,9 @@ import io.ktor.server.engine.embeddedServer
 import io.modelcontextprotocol.kotlin.sdk.CallToolResult
 import io.modelcontextprotocol.kotlin.sdk.Implementation
 import io.modelcontextprotocol.kotlin.sdk.ServerCapabilities
+import io.modelcontextprotocol.kotlin.sdk.ImageContent
 import io.modelcontextprotocol.kotlin.sdk.TextContent
+import java.util.Base64
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
 import kotlinx.coroutines.CoroutineScope
@@ -226,14 +228,29 @@ class McpBridgeService(private val project: Project) : Disposable {
         arguments: JsonObject
     ): CallToolResult {
         return try {
-            CallToolResult(content = listOf(TextContent(invokeTool(tool, arguments))))
+            run {
+            val result = invokeTool(tool, arguments)
+            val content = buildList {
+                add(TextContent(result.text))
+                result.imageBase64?.let { data ->
+                    add(ImageContent(data = data, mimeType = result.imageMimeType ?: "image/png"))
+                }
+            }
+            CallToolResult(content = content)
+        }
         } catch (e: Exception) {
             log.warn("Tool '${tool.name}' failed", e)
             CallToolResult(content = listOf(TextContent("Error: ${e.message}")), isError = true)
         }
     }
 
-    private suspend fun invokeTool(tool: DiscoveredTool, arguments: JsonObject): String {
+    private data class ToolOutput(
+        val text: String,
+        val imageBase64: String? = null,
+        val imageMimeType: String? = null,
+    )
+
+    private suspend fun invokeTool(tool: DiscoveredTool, arguments: JsonObject): ToolOutput {
         val raw = tool.rawTool
 
         // Create a minimal InvocationContext via dynamic proxy.
@@ -300,16 +317,32 @@ class McpBridgeService(private val project: Project) : Disposable {
 
         // Tool.createToolHandler(ToolContext, FunctionCall) → ToolHandler
         val handler = invoke(raw, "createToolHandler", toolContext, functionCall)
-            ?: return "Failed to create handler for ${tool.name}"
+            ?: return ToolOutput("Failed to create handler for ${tool.name}")
 
         // ToolHandler.handle() → Response (suspend)
         val response = withContext(Dispatchers.IO) { callSuspend(handler, "handle") }
-            ?: return "Handler returned null"
+            ?: return ToolOutput("Handler returned null")
 
-        // Response.text() → String
-        return invoke(response, "text") as? String
+        // Response.text() -> String
+        val text = invoke(response, "text") as? String
             ?: invoke(response, "getStatus") as? String
             ?: response.toString()
+
+        // Response.getBlob() -> Blob? (contains screenshot image data)
+        val blob = invoke(response, "getBlob")
+        if (blob != null) {
+            val data = invoke(blob, "getData") as? ByteArray
+            if (data != null && data.isNotEmpty()) {
+                // Blob.getMimeType() is mangled by Kotlin inline class -- find by name pattern
+                val mimeType = blob.javaClass.methods
+                    .firstOrNull { it.name.contains("MimeType", ignoreCase = true) && it.parameterCount == 0 }
+                    ?.let { it.isAccessible = true; runCatching { it.invoke(blob) as? String }.getOrNull() }
+                    ?: "image/png"
+                return ToolOutput(text, Base64.getEncoder().encodeToString(data), mimeType)
+            }
+        }
+
+        return ToolOutput(text)
     }
 
     // ---- proxy helpers -----------------------------------------------------
