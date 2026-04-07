@@ -1,5 +1,7 @@
 # Android Tools MCP
 
+> Fork of [amsavarthan/android-tools-mcp](https://github.com/amsavarthan/android-tools-mcp) with screenshot/image support and Windows build fixes.
+
 An Android Studio plugin that exposes the built-in Gemini agent tools as an [MCP](https://modelcontextprotocol.io) server — so any AI coding tool can use them.
 
 > [!WARNING]
@@ -14,11 +16,11 @@ An Android Studio plugin that exposes the built-in Gemini agent tools as an [MCP
 
 **1. Install the plugin**
 
-Download the ZIP from [Releases](https://github.com/amsavarthan/android-tools-mcp/releases) and install via **Settings → Plugins → Install Plugin from Disk** in Android Studio.
+Download the ZIP from [Releases](https://github.com/Codename-11/android-tools-mcp/releases) and install via **Settings → Plugins → Install Plugin from Disk** in Android Studio.
 
 **2. Download the bridge script**
 
-Save [`android-studio-mcp.py`](https://github.com/amsavarthan/android-tools-mcp/blob/main/scripts/android-studio-mcp.py) somewhere on your machine.
+Save [`android-studio-mcp.py`](https://github.com/Codename-11/android-tools-mcp/blob/main/scripts/android-studio-mcp.py) somewhere on your machine.
 
 **3. Connect to your favourite tool** (see [below](#connect-to-your-favourite-tool))
 
@@ -142,20 +144,35 @@ All tools are Android-specific. Generic file/code tools are intentionally exclud
 
 By default the server runs on port **24601**. To change it:
 
-1. In Android Studio: **Help → Edit Custom VM Options** → add `-Dmcp.bridge.port=12345`
+1. In Android Studio: **Help → Edit Custom VM Options** → add `-Dandroid.tools.mcp.port=12345`
 2. Pass `--port 12345` to the bridge script
+
+---
+
+## Fork changes
+
+This fork adds the following on top of upstream:
+
+- **Image/screenshot support** — Tool responses containing `Blob` data (e.g. from `take_screenshot`, `render_compose_preview`) are returned as MCP `ImageContent` (base64-encoded) alongside `TextContent`. Upstream returned text-only results, silently dropping image data.
+- **Gradle wrapper jar included** — `gradle-wrapper.jar` is committed so `./gradlew` works immediately after cloning.
+- **Windows build support** — `local.properties` path resolution and cross-platform release script.
 
 ---
 
 ## Build from source
 
 ```bash
-git clone https://github.com/amsavarthan/android-tools-mcp
+git clone https://github.com/Codename-11/android-tools-mcp
 cd android-tools-mcp
 ./gradlew buildPlugin
 ```
 
 The plugin ZIP is written to `build/distributions/`. The build compiles against your local Android Studio installation — set the path via `local.properties` (`android.studio.path=...`), env var `ANDROID_STUDIO_PATH`, or it defaults to `/Applications/Android Studio.app`.
+
+On Windows, create `local.properties` with:
+```properties
+android.studio.path=C:\\Program Files\\Android\\Android Studio
+```
 
 ---
 

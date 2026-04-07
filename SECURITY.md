@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please report it by [opening a GitHub issue](https://github.com/amsavarthan/android-tools-mcp/issues).
+If you discover a security vulnerability, please report it by [opening a GitHub issue](https://github.com/Codename-11/android-tools-mcp/issues).
 
 ## Scope
 

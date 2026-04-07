@@ -58,7 +58,12 @@ fi
 # ---- Bump version -----------------------------------------------------------
 
 echo "Bumping version to $VERSION..."
-sed -i "" "s/^plugin\.version = .*/plugin.version = $VERSION/" gradle.properties
+# Cross-platform sed -i (macOS requires '' arg, GNU/MSYS does not)
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  sed -i '' "s/^plugin\.version = .*/plugin.version = $VERSION/" gradle.properties
+else
+  sed -i "s/^plugin\.version = .*/plugin.version = $VERSION/" gradle.properties
+fi
 
 # ---- Build ------------------------------------------------------------------
 
